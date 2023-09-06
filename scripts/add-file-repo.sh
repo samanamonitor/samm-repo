@@ -23,8 +23,12 @@ usage() {
 
 PKG_FILE=$1
 VERSION_CODENAME=$2
+PACKAGE_ARCH=$3
 VERSION_NUMBER=1.0.0
 
+if [ -z "${PACKAGE_ARCH}" ]; then
+    usage "Package architecture is mandatory"
+fi
 if [ -z "${PKG_FILE}" ] || [ -z "${VERSION_CODENAME}" ]; then
     usage "Invalid parameters."
 fi
@@ -37,7 +41,7 @@ fi
 
 CURDIR=/usr/src
 DISTS_DIR=dists/${VERSION_CODENAME}
-PACKAGE_DIR=${DISTS_DIR}/main/binary-amd64
+PACKAGE_DIR=${DISTS_DIR}/main/binary-${PACKAGE_ARCH}
 POOL_DIR=pool/main/${VERSION_CODENAME}
 TEMPDIR=$(mktemp -d ${CURDIR}/repo-XXXXX)
 mkdir -p ${CURDIR}/gpg
@@ -51,7 +55,11 @@ mkdir -p ${TEMPDIR}/${POOL_DIR}
 cp ${PKG_FILE} ${TEMPDIR}/${POOL_DIR}
 
 cd ${TEMPDIR}
-aws s3 cp s3://samm-repo/${PACKAGE_DIR}/Packages ${PACKAGE_DIR}/
+#aws s3 cp s3://samm-repo/${PACKAGE_DIR}/Packages ${PACKAGE_DIR}/
+aws s3 cp  s3://samm-repo/dists dists --recursive
+if [ ! -f ${PACKAGE_DIR}/Packages ]; then
+    touch ${PACKAGE_DIR}/Packages
+fi
 PKG_NAME=$(dpkg-deb -f ${POOL_DIR}/${PKG_FILE} Package)
 # Delete package info if it exists
 sed -i "/^Package: ${PKG_NAME}$/,/^$/d" ${PACKAGE_DIR}/Packages
@@ -66,7 +74,7 @@ Label: SAMM
 Suite: ${VERSION_CODENAME}
 Codename: ${VERSION_CODENAME}
 Version: ${VERSION_NUMBER}
-Architectures: amd64
+Architectures: amd64 arm64
 Components: main
 Description: SAMM Samana Advanced Monitoring and Management repository
 Date: $(date -Ru)
